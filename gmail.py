@@ -29,7 +29,7 @@ with open(root / "credentials.json", "r") as f:
     CREDENTIALS_FILE = json.load(f)
 # CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_PATH", "credentials.json")
 
-# ✅ API SCOPES (Least Privilege)
+# API SCOPES (Least Privilege)
 SCOPES = [
     "https://www.googleapis.com/auth/calendar.events",
     "https://www.googleapis.com/auth/gmail.send",
@@ -38,7 +38,7 @@ SCOPES = [
 
 # %%
 
-# ✅ API Rate Limit Settings
+# API Rate Limit Settings
 REQUEST_DELAY = 1  # Wait 1 second between API requests
 
 # 🔑 Authenticate Google API Services
@@ -81,7 +81,7 @@ def check_existing_meeting(start_time):
     ).execute()
     return len(events_result.get("items", [])) > 0  
 
-# 🕒 Find the next available time slot
+# Find the next available time slot
 def find_next_available_slot(start_time, meeting_duration=30):
     logger.info("Finding the next available time slot...")
 
@@ -98,7 +98,7 @@ def find_next_available_slot(start_time, meeting_duration=30):
         if not events:
             return time_slot  # Found available slot
 
-# 📅 Create a Meeting in Google Calendar
+# Create a Meeting in Google Calendar
 def create_meeting(event_title, start_time, end_time, attendees, time_zone=None, recurring=None):
     logger.info("Creating a meeting in Google Calendar...")
     calendar_service, _, _ = authenticate_google()    
@@ -111,7 +111,7 @@ def create_meeting(event_title, start_time, end_time, attendees, time_zone=None,
         "visibility": "private"
     }
     
-    # 🔄 Add Recurrence
+    # Add Recurrence
     if recurring:
         recurrence_map = {"daily": "DAILY", "weekly": "WEEKLY", "monthly": "MONTHLY"}
         if recurring.lower() in recurrence_map:
@@ -121,7 +121,7 @@ def create_meeting(event_title, start_time, end_time, attendees, time_zone=None,
     time.sleep(REQUEST_DELAY)
     return event["id"], event.get("hangoutLink", "No Google Meet Link")
 
-# 📧 Send Email with PDF Attachment
+# Send Email with PDF Attachment
 def send_email(email_list, subject, body, pdf_attachment=None):
     logger.info(f"Sending email to {', '.join(email_list)}...")
     _, gmail_service, _ = authenticate_google()
@@ -144,7 +144,7 @@ def meeting_scheduler(event_title, start_time, meeting_duration, attendees, time
     conflicts = check_existing_meeting(start_time)
     if conflicts:
         new_time = find_next_available_slot(start_time, meeting_duration)
-        print(f"⚠️ Conflict detected! Rescheduling to {new_time.strftime(r'%A, %B %d, %Y')}")
+        print(f"Conflict detected! Rescheduling to {new_time.strftime(r'%A, %B %d, %Y')}")
         start_time = new_time
 
     end_time = start_time + timedelta(minutes=meeting_duration)
@@ -159,7 +159,7 @@ def meeting_scheduler(event_title, start_time, meeting_duration, attendees, time
 def meeting_notifier(email_list, subject, body, pdf_attachment=None):
     try:
         send_email(email_list, subject, body, pdf_attachment)
-        print(f"✉️ Email successfully sent to {email_list}")
+        print(f"Email successfully sent to {', '.join(email_list)}")
     except Exception as e:
-        print(f"❌ Error sending email: {e}")
+        print(f"Error sending email: {e}")
     
