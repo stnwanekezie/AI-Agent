@@ -26,8 +26,6 @@ class EventExtraction(BaseModel):
     description: str = Field(..., description="Raw description of the event.")
     is_calendar_event: bool = Field(..., description="Whether the description is a calendar event.")
     confidence_score: float = Field(..., description="Confidence score of the prediction between 0 and 1.")
-    # participants: Optional[list[str]] = Field(None, description="Participants of the event.")
-    # location: Optional[str] = Field(None, description="Location of the event.")
 
 class EventDetails(BaseModel):
     name: str = Field(..., description="Name of the event.")
@@ -36,7 +34,7 @@ class EventDetails(BaseModel):
     participants: list[str] = Field(..., description="List of participants names of the event.")
     participant_emails: list[str] = Field(..., description=(
             "List of participants emails."
-            "The format should be always '<last name><first name>@gmail.com'."
+            "The format should be always '<last_name><first_name>@gmail.com' if not explicitly given."
         ) # '<first letter of first name>.<last name>
     )
     location: Optional[str] = Field(None, description="Location of the event.")
@@ -82,7 +80,10 @@ def parse_event_details(description: str) -> EventDetails:
         messages=[
             {
                 "role": "system",
-                "content": f"{date_context} Extract detailed event information. When dates reference 'next Tuesday' or similar relative dates, use this current date as reference.",
+                "content": (
+                    f"{date_context} Extract detailed event information."
+                    "When dates reference 'next Tuesday' or similar relative dates, use this current date as reference."
+                ),
             },
             {"role": "user", "content": description},
         ],
@@ -107,7 +108,8 @@ def generate_confirmation(event_details: EventDetails, new_time: datetime, meeti
                 "role": "system",
                 "content": (
                     "Generate a natural confirmation message for the event."
-                    f"The scheduled meeting time is {new_time.strftime(r'%A, %B %d, %Y')} and meeting location is {event_details.location or meeting_link}." 
+                    f"The scheduled meeting time is {new_time.strftime(r'%A, %B %d, %Y')}"
+                    f"and meeting location is {event_details.location or meeting_link}." 
                     "Sign off with your name; Stanley."
                 ),
             },
@@ -142,7 +144,10 @@ def process_calendar_request(user_input: str) -> Optional[EventConfirmation]:
 
     # Second LLM call: Get detailed event information
     event_details = parse_event_details(initial_extraction.description)
-    new_time, meeting_id, meeting_link = meeting_scheduler(event_details.name, datetime.fromisoformat(event_details.date), event_details.duration_minutes, event_details.participant_emails)
+    new_time, meeting_id, meeting_link = meeting_scheduler(
+        event_details.name, datetime.fromisoformat(event_details.date), 
+        event_details.duration_minutes, event_details.participant_emails
+    )
 
     logger.info(f"Meeting scheduled successfully - ID: {meeting_id}, Link: {meeting_link}")
     
