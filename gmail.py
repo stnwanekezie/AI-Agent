@@ -24,7 +24,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 root = Path(__file__).parent.resolve()
-# 🔒 Secure OAuth Credentials
+# Secure OAuth Credentials
 with open(root / "credentials.json", "r") as f:
     CREDENTIALS_FILE = json.load(f)
 # CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_PATH", "credentials.json")
@@ -41,7 +41,7 @@ SCOPES = [
 # API Rate Limit Settings
 REQUEST_DELAY = 1  # Wait 1 second between API requests
 
-# 🔑 Authenticate Google API Services
+# Authenticate Google API Services
 def authenticate_google():
     logger.info("Authenticating Google API Services...")
 
@@ -64,7 +64,7 @@ def authenticate_google():
     )
 
 # %%
-# 🔍 Check for existing meetings in Google Calendar
+# Check for existing meetings in Google Calendar
 def check_existing_meeting(start_time):
     # event_title, 
     # Returns True if a meeting exists at the same time
