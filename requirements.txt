@@ -1,6 +1,12 @@
 fpdf
 openai
 gspread
+pandas
+numpy
+yfinance
+matplotlib
+statsmodels
+scikit-learn
 google-auth 
 google-auth-oauthlib 
 google-auth-httplib2 
