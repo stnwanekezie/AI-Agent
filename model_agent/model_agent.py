@@ -220,7 +220,7 @@ def extract_model_args(
     return result_dump
 
 
-def response_processor(user_input, responses):
+def response_processor(user_input, responses) -> str:
     system_prompt = (
         "You are a senior quant assistant that answers questions about a model. "
         f"The model returned the following response: {responses}. "

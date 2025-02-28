@@ -39,39 +39,39 @@ contained in `regression_model.py`.
 
 ## Functions
 
-### [extract_action_summary(user_input: str) -> dict]
+### extract_action_summary(user_input: str) -> dict
 Extracts action summaries from the user input.
 
-### [extract_subprompt(user_input: str, action: str) -> UserPrompts]
+### extract_subprompt(user_input: str, action: str) -> UserPrompts
 Generates a subprompt for a specific action.
 
-### [extract_model_args(user_input: str, action: str) -> Union[EstimationArgs, SimulationArgs]]
+### extract_model_args(user_input: str, action: str) -> Union[EstimationArgs, SimulationArgs]
 Extracts model parameters for a specific action.
 
-### [response_processor(user_input, responses)]
+### response_processor(user_input, responses) -> str
 Processes model responses and provides statistical analysis.
 
-### [model_helper(user_input: str) -> dict]
+### model_helper(user_input: str) -> dict
 Main function that handles the entire workflow from extracting actions to processing responses.
 
 
 ## Pydantic Classes for Structured Outputs
 
-### [SummaryActions]
+### SummaryActions
 Defines the structure for action summaries.
 
-### [UserPrompts]
+### UserPrompts
 Defines the structure for user subprompts.
 
-### [EstimationArgs]
+### EstimationArgs
 Defines the structure for model estimation parameters.
 
-### [SimulationArgs]
+### SimulationArgs
 Defines the structure for simulation parameters.
 
 ## Logging
 
-The script uses the [logging] module to log information, warnings, and errors. Logs are formatted with timestamps and log levels.
+The script uses the `logging` module to log information, warnings, and errors. Logs are formatted with timestamps and log levels.
 
 ## Example
 
