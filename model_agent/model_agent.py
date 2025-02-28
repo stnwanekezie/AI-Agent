@@ -21,7 +21,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-chat_model = "gpt-4o"
+chat_model = "gpt-4.5-preview"
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
     organization=os.getenv("OPENAI_ORGANIZATION_ID"),
@@ -38,7 +38,7 @@ class SummaryActions(BaseModel):
         ...,
         description="""
             This is a list constructed from user input. The list elements is one or more
-            of ['full-estimation', 'out-of-sample', and 'forecasting']. Key values may include 
+            of ['full-estimation', 'out-of-sample', and 'simulation']. Key values may include 
             'full-estimation' or 'out-of-sample' but not both and 'forecasting', if applicable
         """,
     )
@@ -58,7 +58,7 @@ class UserPrompts(BaseModel):
     )
 
 
-class ModelParameters(BaseModel):
+class EstimationArgs(BaseModel):
     stock_ticker: str = Field(
         ...,
         description="Ticker of stock for which a model or analysis is required. Default is NVDA.",
@@ -97,15 +97,6 @@ class ModelParameters(BaseModel):
         ),
     )
 
-    performance_horizon: str = Field(
-        ...,
-        description=(
-            "Specifies the time period to use for analysis."
-            "Default is an empty string. If reference is made to an action, get the start date to end date of the action "
-            "or the start and end dates of the most important period of the action. "
-            "The string form should be of the form '<start_date>-<end_date>' where each date has the format 'YYYYMM'."
-        ),
-    )
     train_test_split: float = Field(
         ...,
         description=(
@@ -125,15 +116,28 @@ class ModelParameters(BaseModel):
     )
 
 
+class SimulationArgs(BaseModel):
+    simulation_horizon: Union[str, None] = Field(
+        ...,
+        description=(
+            "Specifies the time period to use for simulation or performance analysis."
+            "Default is None. If reference is made to an action or event, get the start date to end date of the action "
+            "or the start and end dates of the most important period of the action or event. "
+            "If string, the string form should be of the form '<start_date>-<end_date>' where each date has the format 'YYYYMM'."
+        ),
+    )
+
+
 # %%
 def extract_action_summary(user_input: str) -> dict:
     logger.info("Starting extraction of action summaries...")
 
     system_prompt = """
-        Given a model estimation or performance evaluation prompt, decompose it into clear summary action steps 
-        including one or more of [full estimation, out-of-sample estimation, performance assessment] in a list. 
-        The prompt will specify either a full estimation or an out-of-sample estimation (but not both), as well as 
-        performance assessment, if applicable. 
+        You are a careful assistant that given a model estimation or performance evaluation prompt, exercises great care to 
+        decompose it into a list of clear summary action steps including one or more of the following:
+        [full estimation, out-of-sample (OOS) estimation, simulation]. Unless estimation is specified as OOS, assume full-estimation.
+        If full estimation and OOS are simultaneously desired, this will be clearly communicated.
+        Reference to forecasting or performance assessment imply that action is simulation.
         Assign confidence scores to predictions.
     """
     completion = client.beta.chat.completions.parse(
@@ -175,7 +179,9 @@ def extract_subprompt(user_input: str, action: str) -> UserPrompts:
 # %%
 
 
-def extract_model_parameters(user_input: str) -> ModelParameters:
+def extract_model_args(
+    user_input: str, action: str
+) -> Union[EstimationArgs, SimulationArgs]:
 
     logger.info("Starting model parameters extraction...")
 
@@ -186,7 +192,7 @@ def extract_model_parameters(user_input: str) -> ModelParameters:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_input},
         ],
-        response_format=ModelParameters,
+        response_format=SimulationArgs if action == "simulation" else EstimationArgs,
     )
 
     result = completion.choices[0].message.parsed
@@ -204,9 +210,9 @@ def extract_model_parameters(user_input: str) -> ModelParameters:
         log_info += "Fixed params: " + fixed_params
     if params_to_drop:
         log_info += f"Parameters to drop: {'; '.join(params_to_drop)}\n"
-    if result.performance_horizon:
+    if result_dump.get("performance_horizon"):
         log_info += f"Performance Horizon: {result.performance_horizon}\n"
-    if result.train_test_split:
+    if result_dump.get("train_test_split"):
         log_info += f"Train-Test Split: {result.train_test_split}\n"
 
     logger.info(log_info)
@@ -216,7 +222,7 @@ def extract_model_parameters(user_input: str) -> ModelParameters:
 
 def response_processor(user_input, responses):
     system_prompt = (
-        "You are a senior quant analyst assistant that answers questions about a model. "
+        "You are a senior quant assistant that answers questions about a model. "
         f"The model returned the following response: {responses}. "
         "Use the model responses to inform your answers. "
         "If user prompt requires statistical analysis which can be performed on any markdown tables "
@@ -242,7 +248,7 @@ def model_helper(user_input: str) -> dict:
     for action, confidence_score in actions.items():
         if confidence_score >= 0.7:
             sub_prompt = extract_subprompt(user_input, action)
-            args = extract_model_parameters(sub_prompt)
+            args = extract_model_args(sub_prompt, action)
             model_actions[action] = {"sub_prompt": sub_prompt, "args": args}
         else:
             logger.warning(
@@ -276,7 +282,7 @@ def model_helper(user_input: str) -> dict:
 
             with open(model_name, "rb") as f:
                 model_obj = pickle.load(f)
-            prediction = model_obj.predict()
+            prediction = model_obj.predict(**subdict["args"])
             responses.append(
                 {
                     "sub_prompt": subdict["sub_prompt"],
@@ -292,8 +298,8 @@ def model_helper(user_input: str) -> dict:
 # %%
 if __name__ == "__main__":
     user_input = """
-        Use the risk-free rate as a flat value of 0.05 the and drop the market factor to estimate a model. 
-        Assess performance during the financial crisis.
+        Use the risk-free rate as a flat value of 0.01 the and drop the market factor to estimate a model. 
+        Assess performance during the financial crisis. Return statistical info of result.
     """
     result = model_helper(user_input)
     print(result)

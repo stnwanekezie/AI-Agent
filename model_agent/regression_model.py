@@ -26,19 +26,20 @@ logger = logging.getLogger(__name__)
 class StockReturnsModel:
 
     def __init__(self, **kwargs):
-        add_constant = kwargs.pop("add_constant")
+        self.add_constant = kwargs.pop("add_constant")
         self.stock_ticker = kwargs.pop("stock_ticker")
         self.train_test_split = kwargs.pop("train_test_split")
-        self.performance_horizon = kwargs.pop("performance_horizon")
         self.dataset = self.load_and_transform_data(**kwargs)
 
         train_dep, train_indeps, test_dep, test_indeps = self.split_data()
         self.train_dep = train_dep
         self.test_dep = test_dep
         self.train_indeps = (
-            train_indeps.assign(const=1) if add_constant else train_indeps
+            train_indeps.assign(const=1) if self.add_constant else train_indeps
         )
-        self.test_indeps = test_indeps.assign(const=1) if add_constant else test_indeps
+        self.test_indeps = (
+            test_indeps.assign(const=1) if self.add_constant else test_indeps
+        )
 
         # self.train_indeps = (
         #     sm.add_constant(train_indeps) if add_constant else train_indeps
@@ -115,38 +116,39 @@ class StockReturnsModel:
     def estimate_model(self):
         return sm.OLS(self.train_dep, self.train_indeps).fit()
 
-    def predict(self, test_indeps=pd.DataFrame()):
+    def predict(self, test_indeps=pd.DataFrame(), **kwargs):
 
         if not test_indeps.empty:
+            test_indeps = (
+                test_indeps.assign(const=1) if self.add_constant else test_indeps
+            )
             pred = self.model.predict(test_indeps)
-        elif self.performance_horizon:
-            start_date, end_date = self.performance_horizon.split("-")
+        elif kwargs.get("simulation_horizon"):
+            start_date, end_date = kwargs.get("simulation_horizon").split("-")
             start_date, end_date = [
                 datetime.strptime(dt.strip(), "%Y%m").date()
                 for dt in [start_date, end_date]
             ]
-            pred = self.model.predict(
-                self.dataset.loc[start_date:end_date].drop(self.stock_ticker, axis=1)
-            )
+            pred = self.model.predict(self.train_indeps.loc[start_date:end_date])
         elif self.train_test_split and not self.test_indeps.empty:
             pred = self.model.predict(self.test_indeps)
         else:
             logger.warning(
                 "No test data provided. Full insample prediction will be returned."
             )
-            pred = self.model.predict(self.dataset.drop(self.stock_ticker, axis=1))
+            pred = self.model.predict(self.train_indeps)
 
         return pred
 
 
 if __name__ == "__main__":
     args = {
-        "risk_free_rate": 0.05,
+        "stock_ticker": "NVDA",
+        "risk_free_rate": 0.01,
         "excess_market_return": False,
         "size_factor": True,
         "value_factor": True,
-        "performance_horizon": "",
         "train_test_split": 0.0,
-        "stock_ticker": "AAPL",
+        "add_constant": True,
     }
     model = StockReturnsModel(**args).predict()
