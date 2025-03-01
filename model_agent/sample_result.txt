@@ -1,4 +1,3 @@
-print(final_response)
 The model has produced performance estimates using a flat risk-free rate of 0.01 and excluding the market factor, focusing specifically on the financial crisis period. Here are some statistical insights derived from the provided data:
 
 1. **Mean**: The average monthly performance estimate over the period.
