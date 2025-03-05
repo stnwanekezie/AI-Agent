@@ -1,13 +1,14 @@
 fpdf
 openai
-gspread
 pandas
 numpy
-yfinance
+ffmpeg-python
 matplotlib
 statsmodels
 scikit-learn
+gspread
 google-auth 
 google-auth-oauthlib 
 google-auth-httplib2 
 google-api-python-client
+python-telegram-bot
