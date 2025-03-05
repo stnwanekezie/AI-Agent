@@ -1,85 +1,124 @@
-# Model Agent
+# Finance Agent
 
-The `model_agent.py` script is designed to assist with the estimation and performance evaluation of financial models. It uses the OpenAI API to parse user prompts and extract relevant actions and parameters for model estimation and simulation. Model implementation is 
-contained in `regression_model.py`.
+A Python-based AI assistant for financial analysis, combining quantitative modeling with technical analysis capabilities.
 
-## Features
+## Overview
 
-- **Model Estimation**: Supports full estimation and out-of-sample estimation.
-- **Simulation**: Allows for forecasting and backtesting over specified time periods.
-- **Parameter Extraction**: Extracts model parameters from user prompts.
-- **Response Processing**: Processes model responses and provides statistical analysis.
+The Finance Agent is an AI-powered tool that helps analyze financial data using:
+- Fama-French model estimation
+- Technical analysis with chart generation
+- Natural language processing for user interactions
+- Context-aware responses with memory management
+
+## Tech Stack
+
+- **Core Language**: Python 3.7+
+- **AI/ML**: OpenAI GPT-4 Turbo
+- **Data Processing**: pandas, statsmodels, scikit-learn
+- **Visualization**: Pillow, ChartImg API
+- **Other**: pydantic, requests
+
+## Prerequisites
+
+```bash
+# Required environment variables
+OPENAI_API_KEY=your-api-key
+OPENAI_ORGANIZATION_ID=your-org-id
+OPENAI_PROJECT_ID=your-project-id
+```
 
 ## Installation
 
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/stnwanekezie/AI-Agent.git
-    cd AI-Agent
-    ```
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/finance-agent.git
+cd finance-agent
 
-2. Install the required packages:
-    ```bash
-    pip install -r requirements.txt
-    ```
+# Install dependencies
+pip install -r requirements.txt
+```
 
-## Usage
+## Usage Examples
 
-1. Set up your OpenAI API credentials as environment variables:
-    ```bash
-    export OPENAI_API_KEY="your-api-key"
-    export OPENAI_ORGANIZATION_ID="your-organization-id"
-    export OPENAI_PROJECT_ID="your-project-id"
-    ```
+### Quantitative Analysis
+```python
+user_input = """
+Use the risk-free rate as a flat value of 0.01 and drop the market factor to estimate a model.
+Assess performance during the financial crisis.
+"""
+result = finance_agent(user_input)
+```
 
-2. Run the script with a user input prompt. Example user input:
-    ```plaintext
-    Use the risk-free rate as a flat value of 0.01 and drop the market factor to estimate a model. Assess performance during the financial crisis. Return statistical info of result.
-    ```
+### Technical Analysis
+```python
+user_input = "Show me a technical analysis of Tesla's stock performance"
+result = finance_agent(user_input)
+```
 
-## Functions
+## Architecture
 
-### extract_action_summary(user_input: str) -> dict
-Extracts action summaries from the user input.
+### Core Components
 
-### extract_subprompt(user_input: str, action: str) -> UserPrompts
-Generates a subprompt for a specific action.
+1. **ContextManager**
+   - Manages conversation history
+   - Implements memory with configurable size
+   - Organizes responses by categories
 
-### extract_model_args(user_input: str, action: str) -> Union[EstimationArgs, SimulationArgs]
-Extracts model parameters for a specific action.
+2. **Model Helper**
+   - Handles Fama-French model estimation
+   - Performs statistical analysis
+   - Manages model caching
 
-### response_processor(user_input, responses) -> str
-Processes model responses and provides statistical analysis.
+3. **Chart Image Tool**
+   - Generates technical analysis charts
+   - Supports multiple timeframes
+   - Customizable chart styles
 
-### model_helper(user_input: str) -> dict
-Main function that handles the entire workflow from extracting actions to processing responses.
+## Workflow
 
+1. User input processing
+2. Tool selection (model_helper or chart_img)
+3. Analysis execution
+4. Response formatting
+5. Context management
 
-## Pydantic Classes for Structured Outputs
+## Limitations
 
-### SummaryActions
-Defines the structure for action summaries.
+- Does not provide investment advice
+- No real-time data processing
+- Limited to supported financial instruments
+- API rate limits may apply
 
-### UserPrompts
-Defines the structure for user subprompts.
+## API Reference
 
-### EstimationArgs
-Defines the structure for model estimation parameters.
+### `finance_agent(user_input: str, context_manager: ContextManager = None) -> str`
 
-### SimulationArgs
-Defines the structure for simulation parameters.
+Main entry point for the application.
 
-## Logging
+**Parameters:**
+- `user_input`: User's query or command
+- `context_manager`: Optional context management instance
 
-The script uses the `logging` module to log information, warnings, and errors. Logs are formatted with timestamps and log levels.
+**Returns:**
+- Formatted response with analysis results
 
-## Example
+### `ContextManager`
 
 ```python
-if __name__ == "__main__":
-    user_input = """
-        Use the risk-free rate as a flat value of 0.01 and drop the market factor to estimate a model. 
-        Assess performance during the financial crisis. Return statistical info of result.
-    """
-    result = model_helper(user_input)
-    print(result)
+manager = ContextManager(max_memory=10)
+manager.add_to_memory(user_input, slot, response)
+```
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details
+
+## Dependencies
+
+- OpenAI for GPT-4 API
+- Financial data providers
+- Open-source community
+
+## Support
+
+Create an issue for bugs or feature requests.

@@ -1,18 +1,15 @@
-"""
-If multiple models are intended to be estimated, the user should use different prompts for each to avoid confusion.
-The user should also specify the how the parameters for each estimation should be defined. Otherwise, the regular
-Fama-French model will be estimated.
-"""
-
 # %%
 import os
+import json
 import pickle
 import logging
 from pathlib import Path
 from openai import OpenAI
-from typing import Literal, Union, List
 from pydantic import BaseModel, Field
+from typing import Literal, Union, List
+from collections import deque, defaultdict
 from regression_model import StockReturnsModel
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,6 +28,25 @@ client = OpenAI(
 root = Path(__file__).parent.resolve()
 
 # %%
+
+
+class ContextManager:
+    def __init__(self, max_memory=10):
+        self.memory = defaultdict(lambda: deque(maxlen=max_memory))
+
+    def __getitem__(self, key):
+        return self.memory[key]
+
+    def add_to_memory(self, user_input, slot, model_response):
+        self.memory[slot].append({"user": user_input, "assistant": model_response})
+
+    def get_context(self, slot):
+        return "\n".join(
+            [
+                f"User: {msg['user']}\nAssistant: {msg['assistant']}"
+                for msg in self.memory[slot]
+            ]
+        )
 
 
 class SummaryActions(BaseModel):
@@ -129,7 +145,9 @@ class SimulationArgs(BaseModel):
 
 
 # %%
-def extract_action_summary(user_input: str) -> dict:
+def extract_action_summary(
+    user_input: str, context_manager: ContextManager = None
+) -> dict:
     logger.info("Starting extraction of action summaries...")
 
     system_prompt = """
@@ -140,39 +158,62 @@ def extract_action_summary(user_input: str) -> dict:
         Reference to forecasting or performance assessment imply that action is simulation.
         Assign confidence scores to predictions.
     """
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_input},
+    ]
+    if context_manager:
+        messages.extend(
+            [
+                {"role": "assistant", "content": msg["assistant"]}
+                for msg in context_manager.memory["actions"]
+            ]
+        )
     completion = client.beta.chat.completions.parse(
         model=chat_model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input},
-        ],
+        messages=messages,
         response_format=SummaryActions,
     )
 
     result = completion.choices[0].message.parsed
+    if context_manager:
+        context_manager.add_to_memory(user_input, "actions", str(result.model_dump()))
     logger.info(f"Model action summaries: {', '.join(result.actions)}")
 
     return dict(zip(result.actions, result.confidence_scores))
 
 
-def extract_subprompt(user_input: str, action: str) -> UserPrompts:
+def extract_subprompt(
+    user_input: str, action: str, context_manager: ContextManager = None
+) -> UserPrompts:
     logger.info(f"Creating subprompt for {action}...")
 
     system_prompt = f"""
         Given a user prompt related to modelling-related processes, extract and generate a new  
         subprompt that strictly includes the details relevant to the {action} step.
     """
-
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_input},
+    ]
+    if context_manager:
+        messages.extend(
+            [
+                {"role": "assistant", "content": msg["assistant"]}
+                for msg in context_manager.memory["subprompts"]
+            ]
+        )
     completion = client.beta.chat.completions.parse(
         model=chat_model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input},
-        ],
+        messages=messages,
         response_format=UserPrompts,
     )
 
     result = completion.choices[0].message.parsed
+    if context_manager:
+        context_manager.add_to_memory(
+            user_input, "subprompts", str(result.model_dump())
+        )
     return result.user_prompt
 
 
@@ -180,23 +221,34 @@ def extract_subprompt(user_input: str, action: str) -> UserPrompts:
 
 
 def extract_model_args(
-    user_input: str, action: str
+    user_input: str, action: str, context_manager: ContextManager = None
 ) -> Union[EstimationArgs, SimulationArgs]:
 
     logger.info("Starting model parameters extraction...")
 
     system_prompt = "You are a helpful model parameter extractor."
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_input},
+    ]
+    if context_manager:
+        messages.extend(
+            [
+                {"role": "assistant", "content": msg["assistant"]}
+                for msg in context_manager.memory["args"]
+            ]
+        )
+
     completion = client.beta.chat.completions.parse(
         model=chat_model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input},
-        ],
+        messages=messages,
         response_format=SimulationArgs if action == "simulation" else EstimationArgs,
     )
 
     result = completion.choices[0].message.parsed
     result_dump = result.model_dump()
+    if context_manager:
+        context_manager.add_to_memory(user_input, "args", str(result_dump))
 
     log_info = "Parameter extraction complete with the following:\n"
     fixed_params = f"{'; '.join(['%s=%.2f' % (k, v) for k, v in result_dump.items() if isinstance(v, float)])}\n"
@@ -220,7 +272,9 @@ def extract_model_args(
     return result_dump
 
 
-def response_processor(user_input, responses) -> str:
+def response_processor(
+    user_input, responses, context_manager: ContextManager = None
+) -> str:
     system_prompt = (
         "You are a senior quant assistant that answers questions about a model. "
         f"The model returned the following response: {responses}. "
@@ -228,27 +282,38 @@ def response_processor(user_input, responses) -> str:
         "If user prompt requires statistical analysis which can be performed on any markdown tables "
         "in the response, compute and respond with the relevant statistic(s) in an informative way."
     )
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_input},
+    ]
+    if context_manager:
+        messages.extend(
+            [
+                {"role": "assistant", "content": msg["assistant"]}
+                for msg in context_manager.memory["final"]
+            ]
+        )
 
     completion = client.chat.completions.create(
         model="gpt-4-turbo",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input},
-        ],
+        messages=messages,
     )
 
-    return completion.choices[0].message.content
+    response = completion.choices[0].message.content
+    if context_manager:
+        context_manager.add_to_memory(user_input, "final", response)
+    return response
 
 
-def model_helper(user_input: str) -> dict:
+def model_helper(user_input: str, context_manager: ContextManager = None) -> dict:
     logger.debug(f"Input text: {user_input}")
 
     model_actions = {}
-    actions = extract_action_summary(user_input)
+    actions = extract_action_summary(user_input, context_manager)
     for action, confidence_score in actions.items():
         if confidence_score >= 0.7:
-            sub_prompt = extract_subprompt(user_input, action)
-            args = extract_model_args(sub_prompt, action)
+            sub_prompt = extract_subprompt(user_input, action, context_manager)
+            args = extract_model_args(sub_prompt, action, context_manager)
             model_actions[action] = {"sub_prompt": sub_prompt, "args": args}
         else:
             logger.warning(
@@ -290,16 +355,4 @@ def model_helper(user_input: str) -> dict:
                 }
             )
 
-    final_response = response_processor(user_input, responses)
-
-    return final_response
-
-
-# %%
-if __name__ == "__main__":
-    user_input = """
-        Use the risk-free rate as a flat value of 0.01 the and drop the market factor to estimate a model. 
-        Assess performance during the financial crisis. Return statistical info of result.
-    """
-    result = model_helper(user_input)
-    print(result)
+    return responses
