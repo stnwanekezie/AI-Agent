@@ -5,9 +5,9 @@ import pickle
 import logging
 from pathlib import Path
 from openai import OpenAI
+from helper import ContextManager
 from pydantic import BaseModel, Field
 from typing import Literal, Union, List
-from collections import deque, defaultdict
 from regression_model import StockReturnsModel
 
 
@@ -18,7 +18,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-chat_model = "gpt-4.5-preview"
+chat_model = "gpt-4o"
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
     organization=os.getenv("OPENAI_ORGANIZATION_ID"),
@@ -28,25 +28,6 @@ client = OpenAI(
 root = Path(__file__).parent.resolve()
 
 # %%
-
-
-class ContextManager:
-    def __init__(self, max_memory=10):
-        self.memory = defaultdict(lambda: deque(maxlen=max_memory))
-
-    def __getitem__(self, key):
-        return self.memory[key]
-
-    def add_to_memory(self, user_input, slot, model_response):
-        self.memory[slot].append({"user": user_input, "assistant": model_response})
-
-    def get_context(self, slot):
-        return "\n".join(
-            [
-                f"User: {msg['user']}\nAssistant: {msg['assistant']}"
-                for msg in self.memory[slot]
-            ]
-        )
 
 
 class SummaryActions(BaseModel):
@@ -112,7 +93,15 @@ class EstimationArgs(BaseModel):
             "If a string 'flat', denotes using a flat value from data to control variable in model estimation."
         ),
     )
-
+    cols_to_bump: List[str] = Field(
+        ...,
+        description=(
+            "Each string will incorporate 3 elements separated by '-'. "
+            "The first element will be the name of columns including the following ['risk_free_rate', 'excess_market_return', 'size_factor', 'value_factor'] "
+            r"which the user wants to bump. The second is the desired factor to bump a column by - default is 10% or 0.1. The last element denotes the type of bump to be applied "
+            "including ['additive', 'multiplicative']. Default value of this attribute is None."
+        ),
+    )
     train_test_split: float = Field(
         ...,
         description=(

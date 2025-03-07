@@ -26,9 +26,11 @@ logger = logging.getLogger(__name__)
 class StockReturnsModel:
 
     def __init__(self, **kwargs):
+        self.raw_data = None
         self.add_constant = kwargs.pop("add_constant")
         self.stock_ticker = kwargs.pop("stock_ticker")
         self.train_test_split = kwargs.pop("train_test_split")
+        self.cols_to_bump = self.parse_factor_adjustments(kwargs.pop("cols_to_bump"))
         self.dataset = self.load_and_transform_data(**kwargs)
 
         train_dep, train_indeps, test_dep, test_indeps = self.split_data()
@@ -76,8 +78,10 @@ class StockReturnsModel:
                 "RF": "risk_free_rate",
             }
         ).astype(float)
-
+        monthly_ff = monthly_ff / 100
         df = pd.concat([stock_data, monthly_ff], axis=1).dropna()
+        df[self.ticker] = df[self.ticker] - df["risk_free_rate"]
+        self.raw_data = df.copy(deep=True)
 
         params_to_drop = [k for k, v in kwargs.items() if isinstance(v, bool) and not v]
         if params_to_drop:
@@ -90,6 +94,13 @@ class StockReturnsModel:
                 df.loc[:, k] = df.loc[:, k].mean()
             else:
                 df.loc[:, k] = v
+
+        for k in self.cols_to_bump:
+            tmp = self.cols_to_bump[k]
+            if tmp["type"] == "additive":
+                df.loc[:, k] = df.loc[:, k] + tmp["factor"]
+            else:
+                df.loc[:, k] = df.loc[:, k] * (1 + tmp["factor"])
 
         return df
 
@@ -140,14 +151,34 @@ class StockReturnsModel:
 
         return pred
 
+    @staticmethod
+    def parse_factor_adjustments(cols_to_bump: list) -> dict:
+
+        factor_dict = {}
+
+        for col in cols_to_bump:
+            if not isinstance(col, str) or col.count("-") != 2:
+                logger.warning(f"Skipping invalid format: {col}")
+                continue
+
+            factor, value, adj_type = col.split("-")
+            try:
+                factor_dict[factor] = {"factor": float(value), "type": adj_type}
+            except ValueError:
+                logger.error(f"Could not convert {value} to float for {factor}")
+                continue
+
+        return factor_dict
+
 
 if __name__ == "__main__":
     args = {
         "stock_ticker": "NVDA",
-        "risk_free_rate": 0.01,
-        "excess_market_return": False,
+        "risk_free_rate": True,
+        "excess_market_return": True,
         "size_factor": True,
         "value_factor": True,
+        "cols_to_bump": ["size_factor-0.15-multiplicative"],
         "train_test_split": 0.0,
         "add_constant": True,
     }
