@@ -20,7 +20,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-chat_model = "gpt-4.5-preview"
+chat_model = "gpt-4-turbo"
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
     organization=os.getenv("OPENAI_ORGANIZATION_ID"),
@@ -100,8 +100,10 @@ def finance_agent(user_input, context_manager: ContextManager = None) -> str:
 
         result = globals().get(name)(**args)
 
-        if result.startswith("http") and (
-            result.endswith("png") or result.endswith("jpg")
+        if (
+            isinstance(result, str)
+            and result.startswith("http")
+            and (result.endswith("png") or result.endswith("jpg"))
         ):
             content = [
                 {

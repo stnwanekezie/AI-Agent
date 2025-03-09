@@ -1,14 +1,15 @@
 # %%
 import os
-import json
 import pickle
 import logging
+import hashlib
 from pathlib import Path
 from openai import OpenAI
 from helper import ContextManager
+from collections import defaultdict
 from pydantic import BaseModel, Field
 from typing import Literal, Union, List
-from regression_model import StockReturnsModel
+from regression_model import FamaFrenchModel
 
 
 logging.basicConfig(
@@ -56,17 +57,17 @@ class UserPrompts(BaseModel):
 
 
 class EstimationArgs(BaseModel):
-    stock_ticker: str = Field(
+    stock_tickers: List[str] = Field(
         ...,
-        description="Ticker of stock for which a model or analysis is required. Default is NVDA.",
+        description="List of stock tickers for which a model or analysis is required. Default is [NVDA].",
     )
 
     risk_free_rate: Union[bool, float, Literal["flat"]] = Field(
         ...,
         description=(
-            "If boolean, denotes if the risk-free factor should be used for model estimation. Default is True."
             "If float, denotes a flat value to use to control variable in model estimation."
-            "If a string 'flat', denotes using a flat value from data to control variable in model estimation."
+            "If a string 'flat', denotes using a flat value from data to control variable in model estimation. "
+            "Default is True and this value cannot be False if boolean. "
         ),
     )
     excess_market_return: Union[bool, float, Literal["flat"]] = Field(
@@ -126,7 +127,7 @@ class SimulationArgs(BaseModel):
         ...,
         description=(
             "Specifies the time period to use for simulation or performance analysis."
-            "Default is None. If reference is made to an action or event, get the start date to end date of the action "
+            "Default is None object. If reference is made to an action or event, get the start date to end date of the action "
             "or the start and end dates of the most important period of the action or event. "
             "If string, the string form should be of the form '<start_date>-<end_date>' where each date has the format 'YYYYMM'."
         ),
@@ -159,7 +160,7 @@ def extract_action_summary(
             ]
         )
     completion = client.beta.chat.completions.parse(
-        model=chat_model,
+        model="gpt-4.5-preview",
         messages=messages,
         response_format=SummaryActions,
     )
@@ -298,50 +299,63 @@ def model_helper(user_input: str, context_manager: ContextManager = None) -> dic
     logger.debug(f"Input text: {user_input}")
 
     model_actions = {}
+    estimation_actions = ["full-estimation", "out-of-sample"]
     actions = extract_action_summary(user_input, context_manager)
+
     for action, confidence_score in actions.items():
         if confidence_score >= 0.7:
             sub_prompt = extract_subprompt(user_input, action, context_manager)
             args = extract_model_args(sub_prompt, action, context_manager)
-            model_actions[action] = {"sub_prompt": sub_prompt, "args": args}
+            if action in estimation_actions:
+                filename = hashlib.md5(str(args).encode()).hexdigest()
+                model_actions[action] = {
+                    "sub_prompt": sub_prompt,
+                    "args": args,
+                    "filename": filename,
+                }
+            else:
+                model_actions[action] = {"sub_prompt": sub_prompt, "args": args}
         else:
             logger.warning(
                 f"Confidence score for action: \n{action.title()} is below threshold. Skipping action."
             )
 
-    estimation_actions = ["full-estimation", "out-of-sample"]
-    if any([action in model_actions.keys() for action in estimation_actions]):
-        for action in estimation_actions:
-            try:
-                ordered_actions = {action: model_actions.pop(action)}
-                model_actions = {**ordered_actions, **model_actions}
-            except KeyError:
-                continue
-
-    responses = []
+    responses = defaultdict(dict)
     model_cache = root.joinpath("model_cache")
-    model_name = None
+    simulation_params = model_actions.pop("simulation", None)
     for action, subdict in model_actions.items():
-        if action in ["full-estimation", "out-of-sample"]:
-            logger.info("Model is being estimated...")
+        filename = subdict.get("filename")
+        model_path = model_cache / f"{filename}.pkl"
 
-            args_hash = hash(str(subdict["args"]))
-            model_name = model_cache / f"{args_hash}.pkl"
-            if not (model_name).exists():
-                model_obj = StockReturnsModel(**subdict["args"])
-                with open(model_name, "wb") as f:
-                    pickle.dump(model_obj, f, protocol=pickle.HIGHEST_PROTOCOL)
-        else:
-            logger.info("Model performance analysis ongoing...")
-
-            with open(model_name, "rb") as f:
+        if model_path.exists():
+            with open(model_path, "rb") as f:
                 model_obj = pickle.load(f)
-            prediction = model_obj.predict(**subdict["args"])
-            responses.append(
-                {
-                    "sub_prompt": subdict["sub_prompt"],
-                    "prediction": prediction.to_markdown(),
-                }
-            )
+
+        elif action in ["full-estimation", "out-of-sample"]:
+            logger.info("Model is being estimated...")
+            model_obj = FamaFrenchModel(**subdict["args"])
+            with open(model_path, "wb") as f:
+                pickle.dump(model_obj, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        responses[action] = {
+            "sub_prompt": subdict["sub_prompt"],
+            "prediction": model_obj.params_df.to_markdown(),
+        }
+
+    if simulation_params:
+        logger.info("Model performance analysis ongoing...")
+
+        for subdict in model_actions.values():
+            filename = subdict.get("filename")
+            model_path = model_cache / f"{filename}.pkl"
+
+            with open(model_path, "rb") as f:
+                model_obj = pickle.load(f)
+
+            prediction = model_obj.predict(**simulation_params["args"])
+            responses["simulation"][action] = {
+                "sub_prompt": subdict["sub_prompt"],
+                "prediction": prediction.to_markdown(),
+            }
 
     return responses
