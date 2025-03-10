@@ -20,7 +20,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-chat_model = "gpt-4-turbo"
+chat_model = "gpt-4o"
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
     organization=os.getenv("OPENAI_ORGANIZATION_ID"),
@@ -33,10 +33,10 @@ def finance_agent(user_input, context_manager: ContextManager = None) -> str:
 
     system_prompt = """
         You are a helpful assistant using tools to process user input. 
-        Use model_helper for modelling tasks and analysis and get_chart_img
+        Use model_helper for modelling tasks or related analysis and use get_chart_img
         when technical analysis is required.
         If user requires technical analysis, do the following:
-            1. set symbol to uppercase ticker if only company name is given
+            1. fetch and set symbol to uppercase ticker if only company name is given
             2. default interval to 4h if not explicitly given
             3. default chart style to candle if not explicitly given
             
