@@ -19,7 +19,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-chat_model = "gpt-4o"
+chat_model = "gpt-4.5-preview"
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
     organization=os.getenv("OPENAI_ORGANIZATION_ID"),
@@ -141,12 +141,19 @@ def extract_action_summary(
     logger.info("Starting extraction of action summaries...")
 
     system_prompt = """
-        You are a careful assistant that given a model estimation or performance evaluation prompt, exercises great care to 
-        decompose it into a list of clear summary action steps including one or more of the following:
-        [full estimation, out-of-sample (OOS) estimation, simulation]. Unless estimation is specified as OOS, assume full-estimation.
-        If full estimation and OOS are simultaneously desired, this will be clearly communicated.
-        Reference to forecasting or performance assessment imply that action is simulation.
-        Assign confidence scores to predictions.
+        You are a precise and analytical assistant tasked with interpreting user prompts and identifying the desired actions. 
+        Your goal is to produce a clear list of required actions based on the prompt. Possible actions include:
+            1. Full Estimation: Assume this by default for modeling tasks unless specified otherwise.
+            2. Out-of-Sample (OOS) Estimation: Only include this if it is explicitly requested. If both full estimation and OOS are required, this will be clearly communicated.
+            3. Simulation: Trigger this action if the prompt includes references to forecasting or performance assessment.
+        
+        Guidelines for Accurate Interpretation:
+            1. Carefully analyze the prompt to determine the exact actions required.
+            2. If the estimation type is unspecified, default to full estimation.
+            3. Only select OOS estimation if explicitly stated.
+            4. Treat any mention of forecasting or performance evaluation as an indication that simulation is required.
+            5. Clearly indicate any uncertainty in your interpretation.
+            6. Assign confidence scores to predictions.
     """
     messages = [
         {"role": "system", "content": system_prompt},
@@ -178,9 +185,18 @@ def extract_subprompt(
 ) -> UserPrompts:
     logger.info(f"Creating subprompt for {action}...")
 
-    system_prompt = f"""
-        Given a user prompt related to modelling-related processes, extract and generate a new  
-        subprompt that strictly includes the details relevant to the {action} step.
+    system_prompt = """
+        You are an analytical assistant tasked with decomposing user prompts into clear, distinct subprompts for each required action. 
+        The actions will be from the following list:
+            1. Full Estimation
+            2. Out-of-Sample (OOS) Estimation
+            3. Simulation
+        
+        Guidelines for Decomposition:
+            1. Clearly separate subprompts for different actions.
+            2. For each identified action, generate a concise and specific subprompt that clearly describes the task along with all the information provided to achieve it.
+            3. Ensure each subprompt is actionable, unambiguous, and tailored to the corresponding action.
+            4. Use the provided user action to guide the breakdown.
     """
     messages = [
         {"role": "system", "content": system_prompt},
@@ -307,7 +323,9 @@ def model_helper(user_input: str, context_manager: ContextManager = None) -> dic
             sub_prompt = extract_subprompt(user_input, action, context_manager)
             args = extract_model_args(sub_prompt, action, context_manager)
             if action in estimation_actions:
-                filename = hashlib.md5(str(args).encode()).hexdigest()
+                filename = hashlib.md5(
+                    str(str(sorted(list(args.items())))).encode()
+                ).hexdigest()
                 model_actions[action] = {
                     "sub_prompt": sub_prompt,
                     "args": args,

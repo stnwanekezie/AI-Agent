@@ -184,10 +184,20 @@ class FamaFrenchModel:
             elif kwargs.get("simulation_horizon"):
                 start_date, end_date = kwargs.get("simulation_horizon").split("-")
                 start_date, end_date = [
-                    datetime.strptime(dt.strip(), "%Y%m").date()
-                    for dt in [start_date, end_date]
+                    pd.to_datetime(dt, format="%Y%m") for dt in [start_date, end_date]
                 ]
-                pred = model.predict(monthly_ff_adj.loc[start_date:end_date])
+                if end_date in self.stocks_data[ticker].index:
+                    pred = pd.concat(
+                        [
+                            model.predict(
+                                monthly_ff_adj.loc[start_date:end_date]
+                            ).rename(f"{ticker}: Pred"),
+                            self.stocks_data[ticker].rename(f"{ticker}: Act"),
+                        ],
+                        axis=1,
+                    ).dropna()
+                else:
+                    pred = model.predict(monthly_ff_adj.loc[start_date:end_date])
             elif self.train_test_split:
                 test_index = self.end_train_indexes[ticker]
                 pred = model.predict(
@@ -203,7 +213,8 @@ class FamaFrenchModel:
                 ).dropna()
                 pred = model.predict(df.drop(ticker, axis=1))
 
-            pred.name = ticker
+            if isinstance(pred, pd.Series):
+                pred.name = ticker
             predictions.append(pred)
 
         predictions = pd.concat(predictions, axis=1)
