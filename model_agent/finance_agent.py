@@ -8,9 +8,8 @@ Fama-French model will be estimated.
 import os
 import json
 import logging
-from pathlib import Path
 from openai import OpenAI
-from collections import deque, defaultdict
+from helper import ContextManager
 from chart_img_tool import get_chart_img
 from model_tool import model_helper
 
@@ -21,48 +20,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-chat_model = "gpt-4.5-preview"
+chat_model = "gpt-4-turbo"
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
     organization=os.getenv("OPENAI_ORGANIZATION_ID"),
     project=os.getenv("OPENAI_PROJECT_ID"),
 )
 
-root = Path(__file__).parent.resolve()
-
-# %%
-
-
-class ContextManager:
-    def __init__(self, max_memory=10):
-        self.memory = defaultdict(lambda: deque(maxlen=max_memory))
-
-    def __getitem__(self, key):
-        return self.memory[key]
-
-    def add_to_memory(self, user_input, slot, model_response):
-        self.memory[slot].append({"user": user_input, "assistant": model_response})
-
-    def get_context(self, slot):
-        return "\n".join(
-            [
-                f"User: {msg['user']}\nAssistant: {msg['assistant']}"
-                for msg in self.memory[slot]
-            ]
-        )
-
 
 # %%
 def finance_agent(user_input, context_manager: ContextManager = None) -> str:
 
     system_prompt = """
-        You are a helpful assistance using tools to process user input. 
+        You are a helpful assistant using tools to process user input. 
         Use model_helper for modelling tasks and analysis and get_chart_img
-        when technical analysis is required
+        when technical analysis is required.
         If user requires technical analysis, do the following:
             1. set symbol to uppercase ticker if only company name is given
-            2. default interval to 4h, if not explicitly given
-            3. default chart style to candle, if not explicitly given
+            2. default interval to 4h if not explicitly given
+            3. default chart style to candle if not explicitly given
             
     """
     messages = [
@@ -73,7 +49,7 @@ def finance_agent(user_input, context_manager: ContextManager = None) -> str:
         messages.extend(
             [
                 {"role": "assistant", "content": msg["assistant"]}
-                for msg in context_manager.memory["final"]
+                for msg in context_manager["final"]
             ]
         )
 
@@ -124,8 +100,10 @@ def finance_agent(user_input, context_manager: ContextManager = None) -> str:
 
         result = globals().get(name)(**args)
 
-        if result.startswith("http") and (
-            result.endswith("png") or result.endswith("jpg")
+        if (
+            isinstance(result, str)
+            and result.startswith("http")
+            and (result.endswith("png") or result.endswith("jpg"))
         ):
             content = [
                 {
@@ -186,7 +164,8 @@ if __name__ == "__main__":
     context_manager = ContextManager(max_memory=5)
     user_input = """
         Use the risk-free rate as a flat value of 0.01 the and drop the market factor to estimate a model.
-        Assess performance during the financial crisis. Return statistical info of result.
+        Also apply multiplicative bump of 15% to the size factor. Assess performance during the financial crisis. 
+        Return statistical info of result.
     """
     # user_input = "Perform a technical analysis of Tesla"
     while True:
