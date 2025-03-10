@@ -160,7 +160,7 @@ def extract_action_summary(
             ]
         )
     completion = client.beta.chat.completions.parse(
-        model="gpt-4.5-preview",
+        model=chat_model,
         messages=messages,
         response_format=SummaryActions,
     )
@@ -285,7 +285,7 @@ def response_processor(
         )
 
     completion = client.chat.completions.create(
-        model="gpt-4-turbo",
+        model=chat_model,
         messages=messages,
     )
 
