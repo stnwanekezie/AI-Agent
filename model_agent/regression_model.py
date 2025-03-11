@@ -148,6 +148,7 @@ class FamaFrenchModel:
                 df[ticker],
                 df.drop([ticker, "risk_free_rate"], axis=1),
                 test_size=self.train_test_split,
+                shuffle=False,
             )
         else:
             train_dep, train_indeps = df[ticker], df.drop(

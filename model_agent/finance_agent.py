@@ -169,11 +169,11 @@ if __name__ == "__main__":
         Estimate a model for the returns of Tesla and Microsoft. Use a 20% test split and assess
         the forecasting performance of the models between 2020 and 2022.
     """
-    user_input = """
-        Reestimate models for both stocks using a flat risk-free rate of 0.01 dropping the market factor
-        and applying a 15% multiplicative bump to the size factor. Assess the performance during the
-        financial crisis and return summary statistics.
-    """
+    # user_input = """
+    #     Reestimate models for both stocks using a flat risk-free rate of 0.01 dropping the market factor
+    #     and applying a 15% multiplicative bump to the size factor. Assess the performance during the
+    #     financial crisis and return summary statistics.
+    # """
     # user_input = "Perform a technical analysis of the nasdaq inc"
     while True:
         result = finance_agent(user_input, context_manager)
