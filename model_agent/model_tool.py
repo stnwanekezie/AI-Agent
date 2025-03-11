@@ -309,6 +309,8 @@ def model_helper(
 
     responses = defaultdict(dict)
     model_cache = root.joinpath("model_cache")
+    if not model_cache.is_dir():
+        model_cache.mkdir(parents=True)
     simulation_params = model_actions.pop("simulation", None)
     for action, subdict in model_actions.items():
         filename = subdict.get("filename")
