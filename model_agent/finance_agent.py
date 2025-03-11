@@ -8,6 +8,7 @@ Fama-French model will be estimated.
 import os
 import json
 import logging
+from typing import Union
 from openai import OpenAI
 from helper import ContextManager
 from chart_img_tool import get_chart_img
@@ -29,7 +30,9 @@ client = OpenAI(
 
 
 # %%
-def finance_agent(user_input, context_manager: ContextManager = None) -> str:
+def finance_agent(
+    user_input, context_manager: Union[None, ContextManager] = None
+) -> str:
 
     system_prompt = """
         You are a helpful assistant using tools to process user input. 

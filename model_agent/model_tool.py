@@ -136,7 +136,7 @@ class SimulationArgs(BaseModel):
 
 # %%
 def extract_action_summary(
-    user_input: str, context_manager: ContextManager = None
+    user_input: str, context_manager: Union[None, ContextManager] = None
 ) -> dict:
     logger.info("Starting extraction of action summaries...")
 
@@ -227,7 +227,7 @@ def extract_subprompt(
 
 
 def extract_model_args(
-    user_input: str, action: str, context_manager: ContextManager = None
+    user_input: str, action: str, context_manager: Union[None, ContextManager] = None
 ) -> Union[EstimationArgs, SimulationArgs]:
 
     logger.info("Starting model parameters extraction...")
@@ -279,7 +279,7 @@ def extract_model_args(
 
 
 def response_processor(
-    user_input, responses, context_manager: ContextManager = None
+    user_input, responses, context_manager: Union[None, ContextManager] = None
 ) -> str:
     system_prompt = (
         "You are a senior quant assistant that answers questions about a model. "
@@ -311,7 +311,9 @@ def response_processor(
     return response
 
 
-def model_helper(user_input: str, context_manager: ContextManager = None) -> dict:
+def model_helper(
+    user_input: str, context_manager: Union[None, ContextManager] = None
+) -> dict:
     logger.debug(f"Input text: {user_input}")
 
     model_actions = {}
