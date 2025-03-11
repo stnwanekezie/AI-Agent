@@ -318,7 +318,7 @@ def model_helper(
             with open(model_path, "rb") as f:
                 model_obj = pickle.load(f)
 
-        elif action in ["full-estimation", "out-of-sample"]:
+        elif action in estimation_actions:
             logger.info("Model is being estimated...")
             model_obj = FamaFrenchModel(**subdict["args"])
             with open(model_path, "wb") as f:
