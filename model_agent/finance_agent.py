@@ -39,7 +39,9 @@ def finance_agent(
         Use model_helper for modelling tasks or related analysis and use get_chart_img
         when technical analysis is required.
         If user requires technical analysis, do the following:
-            1. fetch and set symbol to uppercase ticker if only company name is given
+            1. if only company name is given, get the company ticker in uppercase
+            2. set symbol as the chart-img.com representation of EXCHANGE:TICKER
+            3. if exchange is not specified by user, default to SP 
             2. default interval to 4h if not explicitly given
             3. default chart style to candle if not explicitly given
             
@@ -161,12 +163,12 @@ def finance_agent(
 # %%
 if __name__ == "__main__":
     context_manager = ContextManager(max_memory=5)
-    user_input = """
-        Use the risk-free rate as a flat value of 0.01 the and drop the market factor to estimate a model.
-        Also apply multiplicative bump of 15% to the size factor. Assess performance during the financial crisis. 
-        Return statistical info of result.
-    """
-    # user_input = "Perform a technical analysis of Tesla"
+    # user_input = """
+    #     Use the risk-free rate as a flat value of 0.01 the and drop the market factor to estimate a model.
+    #     Also apply multiplicative bump of 15% to the size factor. Assess performance during the financial crisis.
+    #     Return statistical info of result.
+    # """
+    user_input = "Perform a technical analysis of the S and p market index"
     while True:
         result = finance_agent(user_input, context_manager)
         print(result)

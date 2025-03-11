@@ -165,7 +165,7 @@ def get_chart_img(
         }
 
     chart_image = chart_client.get_chart(
-        symbol=f"NASDAQ:{symbol}",
+        symbol=symbol,
         interval=interval,
         studies=studies,
         override=override,
