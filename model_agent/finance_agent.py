@@ -41,7 +41,7 @@ def finance_agent(
         If user requires technical analysis, do the following:
             1. if only company name is given, get the company ticker in uppercase
             2. set symbol as the chart-img.com representation of EXCHANGE:TICKER
-            3. if exchange is not specified by user, default to SP 
+            3. if exchange is not specified by user and cannot be inferred for ticker, default to SP 
             2. default interval to 4h if not explicitly given
             3. default chart style to candle if not explicitly given
             
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     #     Also apply multiplicative bump of 15% to the size factor. Assess performance during the financial crisis.
     #     Return statistical info of result.
     # """
-    user_input = "Perform a technical analysis of the S and p market index"
+    user_input = "Perform a technical analysis of the nasdaq inc"
     while True:
         result = finance_agent(user_input, context_manager)
         print(result)
