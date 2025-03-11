@@ -257,7 +257,7 @@ def extract_model_args(
         context_manager.add_to_memory(user_input, "args", str(result_dump))
 
     log_info = "Parameter extraction complete with the following:\n"
-    fixed_params = f"{'; '.join(['%s=%.2f' % (k, v) for k, v in result_dump.items() if isinstance(v, float)])}\n"
+    fixed_params = f"{'; '.join(['%s=%.2f' % (k, v) for k, v in result_dump.items() if isinstance(v, float)])}"
 
     params_to_drop = [
         attr
@@ -265,7 +265,7 @@ def extract_model_args(
         if isinstance(r := getattr(result, attr), bool) and not r
     ]
     if fixed_params:
-        log_info += "Fixed params: " + fixed_params
+        log_info += f"Fixed params: {fixed_params}\n"
     if params_to_drop:
         log_info += f"Parameters to drop: {'; '.join(params_to_drop)}\n"
     if result_dump.get("performance_horizon"):
