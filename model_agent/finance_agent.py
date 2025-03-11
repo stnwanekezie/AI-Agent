@@ -148,6 +148,7 @@ def finance_agent(
         3. Clarify financial topics: Simplify intricate terms into accessible explanations suitable for the user's knowledge level.
         4. Refrain from offering financial recommendations: Deliver information and analysis without suggesting specific actions.
         5. Verify user understanding: Ask clarifying questions to ensure all needs are met.
+        6. Make sure that analysis are performed to completion.
     """
 
     messages = [{"role": "system", "content": system_prompt}] + messages[1:]
