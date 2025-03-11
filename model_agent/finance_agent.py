@@ -37,7 +37,7 @@ def finance_agent(
     system_prompt = """
         You are a helpful assistant using tools to process user input. 
         Use model_helper for modelling tasks or related analysis and use get_chart_img
-        when technical analysis is required. Always use context to refine the user prompt to
+        when technical analysis is required. Where relevant, use context to refine the user prompt to
         ensure that details which are left to be inferred from conversation history are captured.
         If user requires technical analysis, do the following:
             1. if only company name is given, get the company ticker in uppercase
