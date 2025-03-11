@@ -278,39 +278,6 @@ def extract_model_args(
     return result_dump
 
 
-def response_processor(
-    user_input, responses, context_manager: Union[None, ContextManager] = None
-) -> str:
-    system_prompt = (
-        "You are a senior quant assistant that answers questions about a model. "
-        f"The model returned the following response: {responses}. "
-        "Use the model responses to inform your answers. "
-        "If user prompt requires statistical analysis which can be performed on any markdown tables "
-        "in the response, compute and respond with the relevant statistic(s) in an informative way."
-    )
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_input},
-    ]
-    if context_manager:
-        messages.extend(
-            [
-                {"role": "assistant", "content": msg["assistant"]}
-                for msg in context_manager.memory["final"]
-            ]
-        )
-
-    completion = client.chat.completions.create(
-        model=chat_model,
-        messages=messages,
-    )
-
-    response = completion.choices[0].message.content
-    if context_manager:
-        context_manager.add_to_memory(user_input, "final", response)
-    return response
-
-
 def model_helper(
     user_input: str, context_manager: Union[None, ContextManager] = None
 ) -> dict:
