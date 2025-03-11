@@ -1,5 +1,5 @@
 fpdf
-bs4
+tabulate
 openai
 pandas
 numpy
