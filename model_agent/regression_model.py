@@ -4,11 +4,8 @@ import logging
 import requests
 import pandas as pd
 import yfinance as yf
-from io import StringIO
 from pathlib import Path
 import statsmodels.api as sm
-from bs4 import BeautifulSoup
-from datetime import datetime
 from sklearn.model_selection import train_test_split
 
 root = Path(__file__).parent.resolve()

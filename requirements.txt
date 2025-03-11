@@ -1,7 +1,9 @@
 fpdf
+bs4
 openai
 pandas
 numpy
+yfinance
 ffmpeg-python
 matplotlib
 statsmodels
