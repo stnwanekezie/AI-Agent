@@ -37,7 +37,8 @@ def finance_agent(
     system_prompt = """
         You are a helpful assistant using tools to process user input. 
         Use model_helper for modelling tasks or related analysis and use get_chart_img
-        when technical analysis is required.
+        when technical analysis is required. Always use context to refine the user prompt to
+        ensure that details which are left to be inferred from conversation history are captured.
         If user requires technical analysis, do the following:
             1. if only company name is given, get the company ticker in uppercase
             2. set symbol as the chart-img.com representation of EXCHANGE:TICKER
@@ -103,7 +104,7 @@ def finance_agent(
         name = tool_call.function.name
         args = json.loads(tool_call.function.arguments)
 
-        result = globals().get(name)(**args)
+        result = globals().get(name)(**args, context_manager=context_manager)
 
         if (
             isinstance(result, str)
@@ -163,12 +164,16 @@ def finance_agent(
 # %%
 if __name__ == "__main__":
     context_manager = ContextManager(max_memory=5)
-    # user_input = """
-    #     Use the risk-free rate as a flat value of 0.01 the and drop the market factor to estimate a model.
-    #     Also apply multiplicative bump of 15% to the size factor. Assess performance during the financial crisis.
-    #     Return statistical info of result.
-    # """
-    user_input = "Perform a technical analysis of the nasdaq inc"
+    user_input = """
+        Estimate a model for the returns of Tesla and Microsoft. Use a 20% test split and assess
+        the forecasting performance of the models between 2020 and 2022.
+    """
+    user_input = """
+        Reestimate models for both stocks using a flat risk-free rate of 0.01 dropping the market factor
+        and applying a 15% multiplicative bump to the size factor. Assess the performance during the
+        financial crisis and return summary statistics.
+    """
+    # user_input = "Perform a technical analysis of the nasdaq inc"
     while True:
         result = finance_agent(user_input, context_manager)
         print(result)

@@ -3,6 +3,7 @@ import os
 import pickle
 import logging
 import hashlib
+from copy import deepcopy
 from pathlib import Path
 from openai import OpenAI
 from helper import ContextManager

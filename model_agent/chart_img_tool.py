@@ -119,6 +119,7 @@ def get_chart_img(
     chart_style="candle",
     studies=None,
     override=None,
+    context_manager=None,
 ):
     API_KEY = os.getenv("CHART_IMG_API_KEY")
     chart_client = ChartImgClient(api_key=API_KEY)
