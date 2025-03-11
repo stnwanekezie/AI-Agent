@@ -112,11 +112,7 @@ def finance_agent(user_input, context_manager: ContextManager = None) -> str:
                 },
                 {
                     "type": "image_url",
-                    "image_url": {
-                        "url": (
-                            result if isinstance(result, str) else json.dumps(result)
-                        )
-                    },
+                    "image_url": {"url": result},
                 },
             ]
             messages = [messages[0], {"role": "user", "content": content}]
