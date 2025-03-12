@@ -108,9 +108,8 @@ class EstimationArgs(BaseModel):
         ...,
         description=(
             "Specifies the proportion of the data to use for training/testing when action is action is out-of-sample. "
-            "If training size is specified, set to 1 - training size. If training/testing is mentioned "
-            "but a numerical value is not specified, set to 0.2. "
-            "Otherwise, strictly default to 0."
+            "If training size is specified, set to 1 - training size. Unless a numerical value is specified for "
+            "training/testing, strictly default to 0."
         ),
     )
 

@@ -157,6 +157,7 @@ def finance_agent(
     )
 
     response = completion_2.choices[0].message.content
+    messages.pop(-1)
     if context_manager:
         context_manager.add_to_memory(user_input, "final", response)
     return response
@@ -166,9 +167,13 @@ def finance_agent(
 if __name__ == "__main__":
     context_manager = ContextManager(max_memory=5)
     user_input = """
-        Estimate a model for the returns of Tesla and Microsoft. Use a 20% test split and assess
+        Estimate a model for the returns of Tesla and Microsoft. Assess
         the forecasting performance of the models between 2020 and 2022.
     """
+    # user_input = """
+    #     Restimate the models but use a 20% test split. How do the parameter
+    #     estimates compare to the initial ones.
+    # """
     # user_input = """
     #     Reestimate models for both stocks using a flat risk-free rate of 0.01 dropping the market factor
     #     and applying a 15% multiplicative bump to the size factor. Assess the performance during the
